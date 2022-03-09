@@ -13,18 +13,17 @@ async def on_ready():
     print(f'We have logged in as {bot.user}')
   
 @bot.command()
-async def leagueTop(ctx, *, summName, topX = 3):
+async def leagueTop(ctx, summName, topX = 3):
     player = LeagueProfile(summName)
     
     await ctx.send(f"Finding top {topX} champions for {summName}... fitered through recent 60 games")
-    
-    
-    champStats = insertSortChamps(player.getPlayerXGamesKDA(gameTypes=[400, 420, 430, 440,], count=60))
 
-    if len(champStats) == 0:
-      await ctx.send("Too many requests. Trying again in 60 seconds")
-      time.sleep(60)
-      champStats = insertSortLists(player.getPlayerXGamesKDA(gameTypes=[400, 420, 430, 440], count=75))
+    champStats = []
+  
+    try:  
+      champStats = insertSortChamps(player.getPlayerXGamesKDA(count=60))
+    except (RuntimeError, TypeError, NameError) as err:
+      await ctx.send(f"Encountered an error. For those who care, here it is: \"{err}\"")
       
     outstring = ""
     

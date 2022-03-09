@@ -78,14 +78,14 @@ class LeagueProfile:
 
     def getSummoner(self):
       request = requests.get(f'https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{self.riotName}', headers=header)
-      request.raise_for_status()
+      # request.raise_for_status()
       
       return request.json()
     
         
     def getSummonerByPUUID(self, puuid):
         request = requests.get(f'https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/{puuid}', headers=header)
-        request.raise_for_status()
+        # request.raise_for_status()
 
       
         return request.json()
@@ -94,32 +94,25 @@ class LeagueProfile:
         summ = self.getSummoner()
         puuid = summ['puuid']
         request = requests.get(f'https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={count}', headers=header)
-        request.raise_for_status()
+        # request.raise_for_status()
       
         return request.json()
 
     def getMatchByID(self, id):
         request = requests.get(f'https://americas.api.riotgames.com/lol/match/v5/matches/{id}', headers=header)
-        request.raise_for_status()
+        # request.raise_for_status()
         return request.json()
 
-    def getPlayerXGamesKDA(self, gameTypes = [400, 420, 430, 440,], count = 75):
-        matchIDs = self.getSummonersRecentMatchesID(count)
+    def getPlayerXGamesKDA(self, count = 75):
         puuid = self.getSummoner()['puuid']
+        matchIDs = self.getSummonersRecentMatchesID(count)
       
         kills, deaths, assists = 0, 0, 0
 
         for match in matchIDs:
             tempMatch = self.getMatchByID(match)
+            participants = tempMatch.get('info')['participants']
 
-            try:
-              if tempMatch.get('info')['queueId'] not in gameTypes:
-                continue
-              
-              participants = tempMatch.get('info')['participants']
-            except:
-              time.sleep(60)
-              
             i = 0
             while participants[i]['puuid'] != puuid:
                 i += 1
