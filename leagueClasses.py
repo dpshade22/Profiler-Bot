@@ -61,11 +61,9 @@ class Champion:
     self.avgTDP = round(sum(self.teamDmgPercent) / len(self.teamDmgPercent), 4)
     self.winRate = round((self.numWins / self.games), 2)
     self.points = round(self.calcPoints(), 2)
-    if self.games == 1:
-      self.winrate = 0.5
 
 
-  def calcPoints(self):    
+  def calcPoints(self):          
     c = 0.4 * (math.log(self.games) + 1)
     points = 0.5 * (c * 4 * self.avgKDA) + 0.5 * (c * self.winRate + c * self.avgTDP)
     return points
@@ -113,6 +111,9 @@ class LeagueProfile:
             tempMatch = self.getMatchByID(match)
             participants = tempMatch.get('info')['participants']
 
+            if tempMatch.get("info")["queueId"] not in [400, 420, 430, 440]:
+              continue
+              
             i = 0
             while participants[i]['puuid'] != puuid:
                 i += 1

@@ -1,95 +1,57 @@
-from leagueOfLeg import LeagueProfile
+from leagueClasses import LeagueProfile
 from helpers import insertSortLists, insertSortChamps, parseInput
+from leagueHelpers import recentGames, leagueLeaderboard, leaguePoints
 from discord.ext import commands, tasks
-from valorantWebScraping import compKDA, compHS, dmgPerRound, getValPoints
+from valorantHelpers import compKDA, compHS, dmgPerRound, getValPoints
+import discord
 from replit import db
 import os
 
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix='!', help_command=None)
 
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
-  
-@bot.command()
-async def leagueTop(ctx, summName, topX = 3):
-    player = LeagueProfile(summName)
-    
-    await ctx.send(f"Finding top {topX} champions for {summName}... fitered through recent 60 games")
 
-    champStats = []
-  
-    try:  
-      champStats = insertSortChamps(player.getPlayerXGamesKDA(count=60))
-    except (RuntimeError, TypeError, NameError) as err:
+@bot.command()
+async def help(ctx):
+  outstring = f""" 
+  _**Valorant**_   _!val [stat] [IGN#tag]_
+  _stats with the \"all\" before them show all competitive seasons together, while without it is current season's competitive games_
+  `kda, allKDA, hs%, allhs%, dmg/r, allDmg/r, points, leaderboard`
+
+_**League of Legends**_   _!league [stat] [IGN]_
+  `topChamps, points, leaderboard`
+  """  
+  await ctx.send(outstring)
+
+
+@bot.command()
+async def league(ctx, statisticToCheck, riotName = "", count = 3):
+  try:
+    if statisticToCheck.lower() == "topchamps":
+      await recentGames(ctx, riotName, count, False)
+    elif statisticToCheck.lower() == "recent":
+      await recentGames(ctx, riotName, count, True)
+    elif statisticToCheck.lower() == "leaderboard":
+      await leagueLeaderboard(ctx)
+    elif statisticToCheck.lower() == "points":
+      await leaguePoints(ctx, riotName)
+      
+  except (RuntimeError, TypeError, NameError) as err:
       await ctx.send(f"Encountered an error. For those who care, here it is: \"{err}\"")
-      
-    outstring = ""
-    
-    for i in range(topX):
-      if i > len(champStats):
-          break
-      if len(outstring) < 1599:
-        outstring += f"""{champStats[i].name} has {champStats[i].points} points
-                        Games: {champStats[i].games}
-                        Winrate: {champStats[i].winRate}
-                        KDA: {champStats[i].avgKDA} ({champStats[i].totalKills}, {champStats[i].totalDeaths}, {champStats[i].totalAssists})
-                        Average Percent (from team) DMG to Champs: {champStats[i].avgTDP}\n\n"""
-      else:
-        await ctx.send(outstring)
-        outstring = f"""{champStats[i].name} has {champStats[i].points} points
-                        Games: {champStats[i].games}
-                        Winrate: {champStats[i].winRate}
-                        KDA: {champStats[i].avgKDA} ({champStats[i].totalKills}, {champStats[i].totalDeaths}, {champStats[i].totalAssists})
-                        Average Percent (from team) DMG to Champs: {champStats[i].avgTDP}\n\n"""
-        
-    await ctx.send(outstring)
+   
 
-@bot.command()
-async def leaguePoints(ctx, *, message):    
-    name = message
-            
-    await ctx.send(f"Collecting points for {name}...")
-  
-    player = LeagueProfile(name)
-    playerPoints = round(player.getPoints(), 2)
-    
-    db[f"{name} leaguePoints"] = playerPoints
-    
-    outstring = f"{player.riotName} has {playerPoints} in League of Legends"    
-    await ctx.send(outstring)
-
-@bot.command()
-async def leagueLeaderboard(ctx):
-    allLeaguePointsKeys = []
-    allLeaguePointsValues = []
-    
-    for key in db.keys():
-      if key[-12:] == "leaguePoints":
-        allLeaguePointsKeys.append(key)
-        allLeaguePointsValues.append(db[key])
-        
-    outstring = ""
-
-    sortedKeys, sortedValues = insertSortLists(allLeaguePointsKeys, allLeaguePointsValues)
-    
-    for i, key in enumerate(sortedKeys):
-      firstMark = key.find("leaguePoints")
-      name = key[:firstMark]
-      
-      outstring += f"{i + 1}. {name} with {sortedValues[i]} points\n"
-    
-    await ctx.send(outstring)
-
-@bot.command()
-async def leagueDel(ctx, *, message):
-    del db[message.split(' ')[1]]
     
 @bot.command()
 async def dropDB(ctx):
-    for key in db.keys():
-      del db[key]
-    await ctx.send("Dropping the current database")
+  if str(ctx.author) != "dpshade22#0196":
+    await ctx.send(f"Nice try pal. Database is still in tact.")
+    return
+
+  for key in db.keys():
+    del db[key]
+  await ctx.send("Dropping the current database")
 
 
 @bot.command()
@@ -105,6 +67,7 @@ async def val(ctx, statisticToCheck, *, riotName = ""):
         valPoints.append(db[key])
 
   sortedKeys, sortedValues = insertSortLists(valPointsNames, valPoints)
+  
   try: 
     if statisticToCheck.lower() == "currkda" or statisticToCheck.lower() == "kda":
       await ctx.send(f"{name}'s current competitive Valorant KDA is: {compKDA(riotName, False)}")
