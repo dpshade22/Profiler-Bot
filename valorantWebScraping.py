@@ -7,7 +7,7 @@ def compKDA(valName, AllFromQueue):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
-
+    
   URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
   
   if AllFromQueue:
