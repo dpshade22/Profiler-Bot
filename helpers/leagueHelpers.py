@@ -1,5 +1,5 @@
 from leagueClasses import LeagueProfile
-from helpers import insertSortChamps, insertSortLists
+from helpers.helperFuncs import insertSortChamps, insertSortLists
 from replit import db
 
 async def recentGames(ctx, riotName, count, recent):
@@ -42,7 +42,7 @@ async def leagueLeaderboard(ctx):
         allLeaguePointsKeys.append(key)
         allLeaguePointsValues.append(db[key])
         
-    outstring = ""
+    outstring = "_**League of Legends Points Leaderboard**_\n----------------------------------------\n"
 
     sortedKeys, sortedValues = insertSortLists(allLeaguePointsKeys, allLeaguePointsValues)
     
@@ -50,7 +50,7 @@ async def leagueLeaderboard(ctx):
       firstMark = key.find("leaguePoints")
       name = key[:firstMark]
       
-      outstring += f"{i + 1}. {name} with {sortedValues[i]} points\n"
+      outstring += f"{i + 1}. **{name}** with _{sortedValues[i]}Lp_\n"
     
     await ctx.send(outstring)
 

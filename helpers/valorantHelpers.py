@@ -14,6 +14,8 @@ def compKDA(valName, AllFromQueue):
     URL += "?season=all"
   
   page = requests.get(URL)
+  page.raise_for_status()
+  
   soup = BeautifulSoup(page.content, "html.parser")
   
   kad = soup.find("span", text="KAD Ratio").find_next("span").text
@@ -32,6 +34,8 @@ def compHS(valName, AllFromQueue):
     URL += "?season=all"
   
   page = requests.get(URL)
+  page.raise_for_status()
+    
   soup = BeautifulSoup(page.content, "html.parser")
   
   hs = soup.find("span", text="Headshot%").find_next("span").text
@@ -50,6 +54,8 @@ def dmgPerRound(valName, AllFromQueue):
     URL += "?season=all"
   
   page = requests.get(URL)
+  page.raise_for_status()
+
   soup = BeautifulSoup(page.content, "html.parser")
   
   dmg = soup.find("span", text="Damage/Round").find_next("span").text
@@ -68,6 +74,8 @@ def getValPoints(valName, AllFromQueue):
     URL += "?season=all"
   
   page = requests.get(URL)
+  page.raise_for_status()
+
   soup = BeautifulSoup(page.content, "html.parser")
 
   matches = int(soup.find("span", class_="matches").text.split(" ")[10])
