@@ -27,3 +27,7 @@ def insertSortChamps(champList):
         champList[j + 1] = key2
 
     return champList
+
+def parseInput(message):
+  wordsList = message.split(' ')
+  return wordsList

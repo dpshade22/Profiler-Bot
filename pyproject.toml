@@ -12,6 +12,7 @@ requests = "^2.27.1"
 replit = "^3.2.4"
 python-dotenv = "^0.19.2"
 discord = "^1.7.3"
+beautifulsoup4 = "^4.10.0"
 
 [tool.poetry.dev-dependencies]
 

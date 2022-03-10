@@ -1,9 +1,8 @@
-from riotGames import LeagueProfile
-from helpers import insertSortLists, insertSortChamps
+from leagueOfLeg import LeagueProfile
+from helpers import insertSortLists, insertSortChamps, parseInput
 from discord.ext import commands, tasks
+from valorantWebScraping import compKDA, compHS, dmgPerRound, getValPoints
 from replit import db
-import discord
-import time
 import os
 
 bot = commands.Bot(command_prefix='!')
@@ -91,13 +90,61 @@ async def dropDB(ctx):
     for key in db.keys():
       del db[key]
     await ctx.send("Dropping the current database")
-    
-def parseInput(message):
-  wordsList = message.split(' ')
-  return wordsList
+
+
+@bot.command()
+async def val(ctx, statisticToCheck, *, riotName = ""):
+
+  name = riotName.split('#')[0]
+  valPointsNames = []
+  valPoints = []
   
+  for key in db.keys():
+      if key[-9:] == "valPoints":
+        valPointsNames.append(key)
+        valPoints.append(db[key])
 
-
+  sortedKeys, sortedValues = insertSortLists(valPointsNames, valPoints)
+  
+  if statisticToCheck.lower() == "currkda" or statisticToCheck.lower() == "kda":
+    await ctx.send(f"{name}'s current competitive Valorant KDA is: {compKDA(riotName, False)}")
+    return
+  elif statisticToCheck.lower() == "allkda":
+    await ctx.send(f"{name}'s overall Valorant KDA is: {compKDA(riotName, True)}")
+    return
+  elif  statisticToCheck.lower() == "currhs%" or statisticToCheck.lower() == "hs%":
+    await ctx.send(f"{name}'s current HS% is: {compHS(riotName, False)}")
+    return
+  elif statisticToCheck.lower() == "allhs%":
+    await ctx.send(f"{name}'s overall HS% is: {compHS(riotName, True)}")
+    return
+  elif statisticToCheck.lower() == "currdmg/r" or statisticToCheck.lower() == "dmg/r":
+    await ctx.send(f"{name}'s current DMG/Round is: {dmgPerRound(riotName, False)}")
+    return
+  elif statisticToCheck.lower() == "alldmg/r":
+    await ctx.send(f"{name}'s overall DMG/Round is: {dmgPerRound(riotName, True)}")
+    return
+  elif statisticToCheck.lower() == "currpoints" or statisticToCheck.lower() == "points":
+    points = getValPoints(riotName, False)
+    db[f"{name} valPoints"] = points
+    await ctx.send(f"{name}'s current points is {points}")
+    return
+  elif statisticToCheck.lower() == "allpoints":
+    await ctx.send(f"{name}'s overall points is {getValPoints(riotName, True)}")
+    return
+  elif statisticToCheck.lower() == "leaderboard":
+    outstring = ""
+    
+    for i, key in enumerate(sortedKeys):
+      firstMark = key.find("valPoints")
+      name = key[:firstMark]
+      
+      outstring += f"{i + 1}. {name} with {sortedValues[i]} points\n"
+      
+      if i== 9:
+        break
+        
+    await ctx.send(outstring)
 
 
 bot.run(os.environ["leagueAPIToken"])
