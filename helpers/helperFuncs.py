@@ -1,3 +1,5 @@
+import random
+
 def insertSortLists(keys, values):
     for i in range(0, len(keys)):
         key = values[i]
@@ -27,6 +29,9 @@ def insertSortChamps(champList):
         champList[j + 1] = key2
 
     return champList
+
+async def headsOrTails():
+  return random.choice(["Heads", "Tails"])
 
 def parseInput(message):
   wordsList = message.split(' ')

@@ -1,6 +1,12 @@
 from leagueClasses import LeagueProfile
 from helpers.helperFuncs import insertSortChamps, insertSortLists
 from replit import db
+import pymongo
+import os
+mongoPass = os.environ['mongoPass']
+
+client = pymongo.MongoClient(f"mongodb+srv://dpshade22:{mongoPass}@cluster0.z1jes.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
+mongoDb = client.profileDB
 
 async def recentGames(ctx, riotName, count, recent):
   player = LeagueProfile(riotName)
@@ -33,25 +39,25 @@ async def recentGames(ctx, riotName, count, recent):
                       Average Percent (from team) DMG to Champs: {champStats[i].avgTDP}\n\n"""
   await ctx.send(outstring)
 
-async def leagueLeaderboard(ctx):
-    allLeaguePointsKeys = []
-    allLeaguePointsValues = []
-    
-    for key in db.keys():
-      if key[-12:] == "leaguePoints":
-        allLeaguePointsKeys.append(key)
-        allLeaguePointsValues.append(db[key])
-        
-    outstring = "_**League of Legends Points Leaderboard**_\n----------------------------------------\n"
+async def leagueLeaderboard(ctx, discordName):
+    leagueStats = mongoDb.leagueStats
 
-    sortedKeys, sortedValues = insertSortLists(allLeaguePointsKeys, allLeaguePointsValues)
-    
-    for i, key in enumerate(sortedKeys):
-      firstMark = key.find("leaguePoints")
-      name = key[:firstMark]
+    outstring = "_**Valorant Points Leaderboard**_\n----------------------------------------\n"
+    stat = "points"
+    if discordName != "": 
+      stat = discordName
+      pointsLeaderboard = leagueStats.find().sort(stat, -1)
+    else:
+      pointsLeaderboard = leagueStats.find().sort(stat, -1)
       
-      outstring += f"{i + 1}. **{name}** with _{sortedValues[i]}Lp_\n"
-    
+    for i, valPlayer in enumerate(pointsLeaderboard):
+      valName = valPlayer['ValorantName']
+      
+      outstring += f"{i + 1}. **{valName}** with _{valPlayer[stat]}_ \n"
+      
+      if i == 9:
+        break
+        
     await ctx.send(outstring)
 
 async def leaguePoints(ctx, riotName):    

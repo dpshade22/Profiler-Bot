@@ -1,6 +1,5 @@
 import os
 import math
-import time
 import requests
 
 header = {
