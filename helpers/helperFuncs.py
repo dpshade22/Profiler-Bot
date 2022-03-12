@@ -1,4 +1,5 @@
 import random
+import datetime
 
 def insertSortLists(keys, values):
     for i in range(0, len(keys)):
@@ -37,4 +38,12 @@ def parseInput(message):
   wordsList = message.split(' ')
   return wordsList
 
+async def serverMembers(ctx):
+  members = []
+  for member in ctx.guild.members:
+    members.append(str(member.name) + "#" + str(member.discriminator))
 
+  return members
+
+def readyForMoreRequests(time):
+  return time < (datetime.datetime.now() - datetime.timedelta(minutes=20))

@@ -16,6 +16,7 @@ beautifulsoup4 = "^4.10.0"
 firebase-admin = "^5.2.0"
 pymongo = "^4.0.2"
 dnspython = "^2.2.1"
+DateTime = "^4.4"
 
 [tool.poetry.dev-dependencies]
 

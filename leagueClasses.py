@@ -65,7 +65,7 @@ class Champion:
   def calcPoints(self):          
     c = 0.4 * (math.log(self.games) + 1)
     points = 0.5 * (c * 4 * self.avgKDA) + 0.5 * (c * self.winRate + c * self.avgTDP)
-    return points
+    return points * 10
 
 
 class LeagueProfile:

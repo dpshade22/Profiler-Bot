@@ -1,11 +1,11 @@
 import requests
 import random
 import math
+import time
 from bs4 import BeautifulSoup
 
-header = {}
 
-def compKDA(valName, AllFromQueue):
+def compKDA(valName, AllFromQueue, s):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
@@ -19,17 +19,18 @@ def compKDA(valName, AllFromQueue):
     URL += "?season=all"
   elif randTrue:
     URL += "/"
-  
-  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
+
+  time.sleep(2)
+  page = s.get(URL, headers = {"X-Host": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
   
   soup = BeautifulSoup(page.content, "html.parser")
   
   kad = soup.find("span", text="KAD Ratio").find_next("span").text
-  return kad
+  return float(kad)
 
 
-def compHS(valName, AllFromQueue):
+def compHS(valName, AllFromQueue, s):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
@@ -44,18 +45,20 @@ def compHS(valName, AllFromQueue):
     URL += "?season=all"
   elif randTrue:
     URL += "/"
-    
-  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
+  
+  time.sleep(2)
+  page = s.get(URL, headers = {"X-Host": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
     
   soup = BeautifulSoup(page.content, "html.parser")
   
-  hs = soup.find("span", text="Headshot%").find_next("span").text
-  hs +=  " in the " + soup.find("span", text="Headshot%").find_next("span").find_next("span").text.lower()
+  hs = soup.find("span", text="Headshot%").find_next("span").text[:-1]
+  # hs +=  " in the " + soup.find("span", text="Headshot%").find_next("span").find_next("span").text.lower()
 
-  return hs
+  return float(hs)
 
-def dmgPerRound(valName, AllFromQueue):
+
+def dmgPerRound(valName, AllFromQueue, s):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
@@ -69,8 +72,9 @@ def dmgPerRound(valName, AllFromQueue):
     URL += "?season=all"
   elif randTrue:
     URL += "/"
-    
-  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
+
+  time.sleep(2)
+  page = s.get(URL, headers = {"X-Host": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
 
   soup = BeautifulSoup(page.content, "html.parser")
@@ -79,7 +83,8 @@ def dmgPerRound(valName, AllFromQueue):
   
   return float(dmg)
 
-def getValPoints(valName, AllFromQueue):
+
+def getValPoints(valName, AllFromQueue, s):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
@@ -93,8 +98,9 @@ def getValPoints(valName, AllFromQueue):
     URL += "?season=all"
   elif randTrue:
     URL += "/"
-    
-  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
+
+  time.sleep(2)
+  page = s.get(URL, headers = {"X-Host": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
 
   soup = BeautifulSoup(page.content, "html.parser")
