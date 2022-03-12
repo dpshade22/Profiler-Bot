@@ -8,8 +8,8 @@ import os
 from leagueClasses import LeagueProfile
 from helpers import helperFuncs, leagueHelpers, valorantHelpers
 from helpers.helperFuncs import insertSortLists, insertSortChamps, parseInput, headsOrTails
-from helpers.leagueHelpers import recentGames, leagueLeaderboard, leaguePoints
-from helpers.valorantHelpers import compKDA, compHS, dmgPerRound, getValPoints
+from helpers.leagueHelpers import recentGames, leagueLeaderboard, getLeaguePoints
+from helpers.valorantHelpers import compKDA, compHS, dmgPerRound, getValPoints, playerValorantProfile
 
 mongoPass = os.environ['mongoPass']
 
@@ -78,7 +78,8 @@ async def profile(ctx, discordName):
 async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = ""):
   collection = mongoDb.profiles
   valorantStats = mongoDb.valorantStats
-
+  leagueStats = mongoDb.leagueStats
+  
   if collection.find_one({"DiscordName": discordName}) != None:
     await ctx.send(f"{discordName} already exists. Use `!updateProfile` with your new IGNs")
     return
@@ -100,6 +101,9 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
     currDmg = dmgPerRound(valName, False)
     allDmg = dmgPerRound(valName, True)
     valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg})
+  
+  if leagueStats.find_one({"LoLName": LoLName}) == None and LoLName != "":
+    points = getLeaguePoints(LoLName)
   
   print(collection.find_one({"DiscordName": "dpshade22#0196"}))
 
@@ -142,9 +146,14 @@ async def update(ctx):
 async def updateProfile(ctx, discordName = "", newVal = "", newLol = "", newCod = ""):
   profiles = mongoDb.profiles
   valorantStats = mongoDb.valorantStats
+  leagueStats = mongoDb.leagueStats
+  
   profile = profiles.find_one({"DiscordName": discordName})
   valName = profile['ValorantName']
+  lolName = profile['LoLName']
+  
   valQuery = valorantStats.find_one({"ValorantName": valName})
+  leagueQuery = leagueStats.find_one({"LoLName": lolName})
   
   if newVal != "" and newLol != "" and newCod != "":
     profiles.update_one(profile, {"$set": {"ValorantName": newVal, "LoLName": newLol, "CoDName": newCod}})
@@ -163,14 +172,17 @@ async def updateProfile(ctx, discordName = "", newVal = "", newLol = "", newCod 
   
   valName = valQuery['ValorantName']
   
-  points = getValPoints(valName, False)
-  currKda = compKDA(valName, False)
-  allKda = compKDA(valName, True)
-  currHS = compHS(valName, False)
-  allHS = compHS(valName, True)
-  currDmg = dmgPerRound(valName, False)
-  allDmg = dmgPerRound(valName, True)
-  valorantStats.update_one(valQuery, {"$set": {"ValorantName": newVal, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg": currDmg, "allDmg": allDmg}})
+  valPoints = getValPoints(valName, False)
+  currValKda = compKDA(valName, False)
+  allValKda = compKDA(valName, True)
+  currValHS = compHS(valName, False)
+  allValHS = compHS(valName, True)
+  currValDmg = dmgPerRound(valName, False)
+  allValDmg = dmgPerRound(valName, True)
+  valorantStats.update_one(valQuery, {"$set": {"ValorantName": newVal, "points": valPoints, "currKda": currValKda, "allKda": allValKda, "currHS": currValHS, "allHS": allValHS,"currDmg": currValDmg, "allDmg": allValDmg}})
+ 
+  leaguePoints = getLeaguePoints(newLol)
+  leagueStats.updates_one(leagueQuery, {"$set": {"LoLName": newLol, "points": leaguePoints}})
   
   await ctx.send(f"Successfully updated _**all**_ of **{discordName}'s** statistics in the database")
 
@@ -196,7 +208,9 @@ async def league(ctx, statisticToCheck, discordName = "", count = 3):
     elif statisticToCheck.lower() == "leaderboard":
       await leagueLeaderboard(ctx)
     elif statisticToCheck.lower() == "points":
-      await leaguePoints(ctx, riotName)
+      await ctx.send(f"Collecting points for {riotName}...")
+      
+      await f"**{riotName}** current LoL points is _{playerPoints}_" 
       
   except (RuntimeError, TypeError, NameError) as err:
       await ctx.send(f"Encountered an error. For those who care, here it is: _\"{err}\"_")
@@ -249,18 +263,7 @@ async def val(ctx, statisticToCheck, discordName = ""):
       await ctx.send(f"**{valName}'s** current Valorant points is _{valQuery['points']}_")
       return
     elif statisticToCheck == "":
-      outstring = f"""
-      _{valName}'s Valorant Stats:_
-    -----------------------------------------------
-      _Points_: ***{valQuery['points']}***
-      _Current KDA_: ***{valQuery['currKda']}***
-      _Current HS%_: ***{valQuery['currHS']}***
-      _Current Damage/Round_: ***{valQuery['currDmg/Round']}***
-      
-      _Overall KDA_: ***{valQuery['allKda']}***
-      _Overall HS%_: ***{valQuery['allHS']}***
-      _Overall Damage/Round_: ***{valQuery['allDmg/Round']}***
-      """
+      outstring = playerValorantProfile(valName, valQuery)
       await ctx.send(outstring)
     
     elif statisticToCheck == "leaderboard" or statisticToCheck == "globalleaderboard":

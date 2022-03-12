@@ -110,3 +110,17 @@ def getPoints(matches, kda, dmgr, winRate):
   c = 0.4 * (math.log(matches) + 1)
   points =  0.5 * (c * 4 * kda) + 0.5 * (c * winRate + c * dmgr)
   return round(points, 2)
+
+def playerValorantProfile(valName, valQuery):
+  return f"""
+      _{valName}'s Valorant Stats:_
+    -----------------------------------------------
+      _Points_: ***{valQuery['points']}***
+      _Current KDA_: ***{valQuery['currKda']}***
+      _Current HS%_: ***{valQuery['currHS']}***
+      _Current Damage/Round_: ***{valQuery['currDmg/Round']}***
+      
+      _Overall KDA_: ***{valQuery['allKda']}***
+      _Overall HS%_: ***{valQuery['allHS']}***
+      _Overall Damage/Round_: ***{valQuery['allDmg/Round']}***
+      """

@@ -7,6 +7,8 @@ mongoPass = os.environ['mongoPass']
 
 client = pymongo.MongoClient(f"mongodb+srv://dpshade22:{mongoPass}@cluster0.z1jes.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
 mongoDb = client.profileDB
+leagueStats = mongoDb.leagueStats
+
 
 async def recentGames(ctx, riotName, count, recent):
   player = LeagueProfile(riotName)
@@ -42,7 +44,7 @@ async def recentGames(ctx, riotName, count, recent):
 async def leagueLeaderboard(ctx, discordName):
     leagueStats = mongoDb.leagueStats
 
-    outstring = "_**Valorant Points Leaderboard**_\n----------------------------------------\n"
+    outstring = "_**League Of Legends Points Leaderboard**_\n----------------------------------------\n"
     stat = "points"
     if discordName != "": 
       stat = discordName
@@ -60,15 +62,16 @@ async def leagueLeaderboard(ctx, discordName):
         
     await ctx.send(outstring)
 
-async def leaguePoints(ctx, riotName):    
-    name = riotName
-            
-    await ctx.send(f"Collecting points for {name}...")
-  
-    player = LeagueProfile(name)
-    playerPoints = round(player.getPoints(), 2)
-    
-    db[f"{name} leaguePoints"] = playerPoints
-    
-    outstring = f"**{player.riotName}** current LoL points is _{playerPoints}_"    
-    await ctx.send(outstring)
+def getLeaguePoints(riotName):    
+  name = riotName
+  leagueQuery = leagueStats.find_one({"LoLName": riotName})
+
+  player = LeagueProfile(name)
+  playerPoints = round(player.getPoints(), 2)
+
+  if leagueQuery == None:
+    leagueStats.insert_one({f"LoLName": {riotName}, "points": playerPoints})
+  else:
+    leagueStats.update_one(leagueQuery, {"$set": {"points": playerPoints}})
+
+  return playerPoints
