@@ -1,19 +1,26 @@
 import requests
+import random
 import math
 from bs4 import BeautifulSoup
 
+header = {}
 
 def compKDA(valName, AllFromQueue):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
-    
-  URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
+  rand1, rand2 = random.randint(0, 200), random.randint(0, 200)
+
+  randTrue = random.choice([True, False])  
   
+  URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
+
   if AllFromQueue:
     URL += "?season=all"
+  elif randTrue:
+    URL += "/"
   
-  page = requests.get(URL)
+  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
   
   soup = BeautifulSoup(page.content, "html.parser")
@@ -26,14 +33,19 @@ def compHS(valName, AllFromQueue):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
+  rand1, rand2 = random.randint(0, 200), random.randint(0, 200)
+
+  randTrue = random.choice([True, False])
 
   
   URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
   
   if AllFromQueue:
     URL += "?season=all"
-  
-  page = requests.get(URL)
+  elif randTrue:
+    URL += "/"
+    
+  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
     
   soup = BeautifulSoup(page.content, "html.parser")
@@ -47,33 +59,42 @@ def dmgPerRound(valName, AllFromQueue):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
+  rand1, rand2 = random.randint(0, 200), random.randint(0, 200)
+
+  randTrue = random.choice([True, False])
 
   URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
   
   if AllFromQueue:
     URL += "?season=all"
-  
-  page = requests.get(URL)
+  elif randTrue:
+    URL += "/"
+    
+  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
 
   soup = BeautifulSoup(page.content, "html.parser")
   
   dmg = soup.find("span", text="Damage/Round").find_next("span").text
-  dmg += " in the " + soup.find("span", text="Damage/Round").find_next("span").find_next("span").text.lower()
   
-  return dmg
+  return float(dmg)
 
 def getValPoints(valName, AllFromQueue):
   valName = valName.split("#")
   name = valName[0].replace(" ", "%20")
   tag = valName[1]
+  rand1, rand2 = random.randint(0, 200), random.randint(0, 200)
+
+  randTrue = random.choice([True, False])
 
   URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
   
   if AllFromQueue:
     URL += "?season=all"
-  
-  page = requests.get(URL)
+  elif randTrue:
+    URL += "/"
+    
+  page = requests.get(URL, headers = {"X-Forwarded-For": f"192.{rand1}.1.{rand2}"})
   page.raise_for_status()
 
   soup = BeautifulSoup(page.content, "html.parser")

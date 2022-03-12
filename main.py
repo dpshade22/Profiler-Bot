@@ -2,6 +2,7 @@ from discord.ext import commands, tasks
 import pymongo
 import requests
 import discord
+import time
 import os
 
 from leagueClasses import LeagueProfile
@@ -14,33 +15,65 @@ mongoPass = os.environ['mongoPass']
 
 client = pymongo.MongoClient(f"mongodb+srv://dpshade22:{mongoPass}@cluster0.z1jes.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
 mongoDb = client.profileDB
+intents = discord.Intents(messages=True, guilds=True, members=True)
 
-bot = commands.Bot(command_prefix='!', help_command=None)
+bot = commands.Bot(command_prefix='!', help_command=None, intents=intents)
 
 
 @bot.event
 async def on_ready():
-    print(f'We have logged in as {bot.user}')
+  print(f'We have logged in as {bot.user}')
 
 @bot.command()
 async def help(ctx):
   outstring = f""" 
-  _**Coin Flip**_ `!coin`
-
+  _**LIST OF COMMANDS**_
+  
   _**Create Player Profile**_   `!newProfile [discord#tag] [valorantName#tag] [leagueName] [cod]`
   _**Update Player Profile**_   `!updateProfile [discord#tag] [valorantName#tag] [leagueName] [cod]` 
-  *If you need to change only one of these, still fill in each field (use old names)*
-  *Update also recalculates all of your stats*
-  
-  _**Valorant**_   `!val [stat] [discord#tag]`
-  _stats with the \"all\" before them show all competitive seasons together, while without it is current season's competitive games_
-  **valid stats**: _kda, allKDA, hs%, allhs%, dmg/r, allDmg/r, points, leaderboard [specific stat to sort by: **points**, **currKda**, **currHS**, **currDmg**] **curr** can be swapped with **all**_
+  > *If you need to change only one of these, still fill in each field (use old names)*
+  > *Update also recalculates all of your stats*
 
+ _**Update Statistics**_   `!update` _get most up to date statistics for all players_
+  
+  > _**Valorant**_   `!val [stat] [discord#tag]` standard format
+  > _stats with the \"all\" before them show all competitive seasons together, while without it is current season's competitive games_
+  > **valid stats**: _kda, allKDA, hs%, allhs%, dmg/r, allDmg/r, points
+  >
+  > _Other `!val` commands_
+  >  `!val leaderboard` 
+  >      _shows Valorant leaderboard for members in this server [specific stat to sort by: **points**, **kda**, **hs**, **dmg/round**]_
+  >  `!val globalLeaderboard` 
+  >      _shows Valorant leaderboard for all players in the database [can also specify stat]_
+  >  `!val [discord#tag]` 
+  >      _shows Valorant profile of the user given_
+  
 _**League of Legends**_   `!league [stat] [discord#tag]`
   **valid stats**: _topChamps, points, leaderboard_
-  """  
+
+  _**Coin Flip**_ `!coin`
+
+  """
   await ctx.send(outstring)
 
+@bot.command()
+async def profile(ctx, discordName):
+  profiles = mongoDb.profiles
+  foundProfile = profiles.find_one({"DiscordName": discordName})
+  
+  if foundProfile == None:
+    await ctx.send("Profile not found, try using the `!newProfile` command")
+    return
+  
+  outstring = f"""
+  _{discordName}'s Profile:_
+-----------------------------------------------
+  _Valorant Name_: ***{foundProfile['ValorantName']}***
+  _League of Legends Name_: ***{foundProfile['LoLName']}***
+  _Call of Duty Name_: ***{foundProfile['CoDName']}***
+  """
+  await ctx.send(outstring)
+  
 @bot.command()
 async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = ""):
   collection = mongoDb.profiles
@@ -66,18 +99,24 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
     allHS = compHS(valName, True)
     currDmg = dmgPerRound(valName, False)
     allDmg = dmgPerRound(valName, True)
-    valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg": currDmg, "allDmg": allDmg})
+    valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg})
   
   print(collection.find_one({"DiscordName": "dpshade22#0196"}))
 
   await ctx.send(f"Successfully added **{discordName}** to the database")
 
 @bot.command()
-async def updateAll(ctx):
+async def update(ctx):
+  profiles = mongoDb.profiles
   valorantStats = mongoDb.valorantStats
-  valQuery = valorantStats.find({})
+  allProfiles = profiles.find({})
   
-  for player in valQuery:
+  await ctx.send(f"Updating **all** player statistics... this can take a while...")
+  
+  for i, profile in enumerate(allProfiles):
+    print(profile)
+
+    player = valorantStats.find_one({"ValorantName": profile['ValorantName']})
     valName = player['ValorantName']
     
     points = getValPoints(valName, False)
@@ -87,8 +126,15 @@ async def updateAll(ctx):
     allHS = compHS(valName, True)
     currDmg = dmgPerRound(valName, False)
     allDmg = dmgPerRound(valName, True)
-    valorantStats.update_one(player, {"$set": {"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg": currDmg, "allDmg": allDmg}})
-
+    valorantStats.update_one(player, {"$set": {"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg}})
+  
+    rate = (i + 1)
+  
+    if rate % 3 == 0:
+      print("Sleeping")
+      time.sleep(31)
+      print("Resuming")
+    
   await ctx.send(f"Successfully updated **all** player statistics in the database")
 
 
@@ -114,24 +160,27 @@ async def updateProfile(ctx, discordName = "", newVal = "", newLol = "", newCod 
     profiles.update_one(profile, {"$set": {"LoLName": newLol}})
   elif newCod != "":
     profiles.update_one(profile, {"$set": {"CoDName": newCod}})
-    
-  if  valName != None:
-    points = getValPoints(valName, False)
-    currKda = compKDA(valName, False)
-    allKda = compKDA(valName, True)
-    currHS = compHS(valName, False)
-    allHS = compHS(valName, True)
-    currDmg = dmgPerRound(valName, False)
-    allDmg = dmgPerRound(valName, True)
-    valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg": currDmg, "allDmg": allDmg}})
   
-  await ctx.send(f"Successfully updated **{discordName}** in the database")
+  valName = valQuery['ValorantName']
+  
+  points = getValPoints(valName, False)
+  currKda = compKDA(valName, False)
+  allKda = compKDA(valName, True)
+  currHS = compHS(valName, False)
+  allHS = compHS(valName, True)
+  currDmg = dmgPerRound(valName, False)
+  allDmg = dmgPerRound(valName, True)
+  valorantStats.update_one(valQuery, {"$set": {"ValorantName": newVal, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg": currDmg, "allDmg": allDmg}})
+  
+  await ctx.send(f"Successfully updated _**all**_ of **{discordName}'s** statistics in the database")
 
 
 @bot.command()
 async def coin(ctx):
   result = await headsOrTails()
   await ctx.send(f"**{result}**")
+
+
 
 @bot.command()
 async def league(ctx, statisticToCheck, discordName = "", count = 3):
@@ -160,50 +209,92 @@ async def val(ctx, statisticToCheck, discordName = ""):
 
   profiles = mongoDb.profiles
   valorantStats = mongoDb.valorantStats
-
+  
   if "#" in discordName:
     currProfile = profiles.find_one({"DiscordName": discordName})
     valName = currProfile['ValorantName']
-    name = valName.split('#')[0]
     
     valQuery = valorantStats.find_one({"ValorantName": valName})
     
+  elif "#" in statisticToCheck and "#" not in discordName:
+    discordName, statisticToCheck = statisticToCheck, discordName
+    currProfile = profiles.find_one({"DiscordName": discordName})
+    
+    valName = currProfile['ValorantName']
+    
+    valQuery = valorantStats.find_one({"ValorantName": valName})
+
+  statisticToCheck = statisticToCheck.lower()
+  
   try: 
-    if statisticToCheck.lower() == "currkda" or statisticToCheck.lower() == "kda":
+    if statisticToCheck == "currkda" or statisticToCheck.lower() == "kda":
       await ctx.send(f"**{valName}'s** current competitive KDA is: _{valQuery['currKda']}_")
       return
-    elif statisticToCheck.lower() == "allkda":
+    elif statisticToCheck == "allkda":
       await ctx.send(f"**{valName}'s** overall competitive KDA is: _{valQuery['allKda']}_")
       return
-    elif  statisticToCheck.lower() == "currhs%" or statisticToCheck.lower() == "hs%":
+    elif  statisticToCheck == "currhs%" or statisticToCheck.lower() == "hs%":
       await ctx.send(f"**{valName}'s** current HS% is: _{valQuery['currHS']}_")
       return
-    elif statisticToCheck.lower() == "allhs%":
+    elif statisticToCheck == "allhs%":
       await ctx.send(f"**{valName}'s** overall HS% is: _{valQuery['allHS']}_")
       return
-    elif statisticToCheck.lower() == "currdmg/r" or statisticToCheck.lower() == "dmg/r":
+    elif statisticToCheck == "currdmg/r" or statisticToCheck.lower() == "dmg/r":
       await ctx.send(f"**{valName}'s** current DMG/Round is: _{valQuery['currDmg']}_")
       return
-    elif statisticToCheck.lower() == "alldmg/r":
+    elif statisticToCheck == "alldmg/r":
       await ctx.send(f"**{valName}'s** overall DMG/Round is: _{valQuery['allDmg']}_")
       return
-    elif statisticToCheck.lower() == "currpoints" or statisticToCheck.lower() == "points":
-      
-      await ctx.send(f"**{valName}'s** current points is _{valQuery['points']}_")
+    elif statisticToCheck == "currpoints" or statisticToCheck.lower() == "points":
+      await ctx.send(f"**{valName}'s** current Valorant points is _{valQuery['points']}_")
       return
+    elif statisticToCheck == "":
+      outstring = f"""
+      _{valName}'s Valorant Stats:_
+    -----------------------------------------------
+      _Points_: ***{valQuery['points']}***
+      _Current KDA_: ***{valQuery['currKda']}***
+      _Current HS%_: ***{valQuery['currHS']}***
+      _Current Damage/Round_: ***{valQuery['currDmg/Round']}***
       
-    elif statisticToCheck.lower() == "leaderboard":
-      outstring = "_**Valorant Points Leaderboard**_\n----------------------------------------\n"
+      _Overall KDA_: ***{valQuery['allKda']}***
+      _Overall HS%_: ***{valQuery['allHS']}***
+      _Overall Damage/Round_: ***{valQuery['allDmg/Round']}***
+      """
+      await ctx.send(outstring)
+    
+    elif statisticToCheck == "leaderboard" or statisticToCheck == "globalleaderboard":
+      members = await serverMembers(ctx)
+      
       stat = "points"
-      if discordName != "": 
-        stat = discordName
-        pointsLeaderboard = valorantStats.find().sort(stat, -1)
+      
+      if discordName.lower() == "hs":
+        stat = "currHS"
+      elif discordName.lower() == "kda":
+        stat = "currKda"
+      elif discordName.lower() == "dmg/round":
+        stat = "currDmg/Round"
       else:
-        pointsLeaderboard = valorantStats.find().sort(stat, -1)
+        discordName = stat
         
-      for i, valPlayer in enumerate(pointsLeaderboard):
+      outstring = f"_**Valorant {discordName.upper()} Leaderboard**_\n----------------------------------------\n"
+
+      leaderboard = valorantStats.find({}).sort(stat, -1)
+      
+      currentServerLeaderboard = []
+
+      if statisticToCheck == "leaderboard":
+        for player in leaderboard:
+          playerProfile = profiles.find_one({"ValorantName": player["ValorantName"]})
+          if playerProfile["DiscordName"] not in members:
+            continue
+          currentServerLeaderboard.append(player)
+      else:
+        currentServerLeaderboard = leaderboard
+      
+      for i, valPlayer in enumerate(currentServerLeaderboard):
+        
         valName = valPlayer['ValorantName']
-        
         outstring += f"{i + 1}. **{valName}** with _{valPlayer[stat]}_ \n"
         
         if i == 9:
@@ -211,7 +302,7 @@ async def val(ctx, statisticToCheck, discordName = ""):
           
       await ctx.send(outstring)
     else:
-      await ctx.send("Valorant stat not found.")
+      await ctx.send("Valorant statistic not found")
       
   except (RuntimeError, TypeError, NameError, IndexError, discord.ClientException, requests.exceptions.HTTPError) as err:
     if type(err) == IndexError:
@@ -221,5 +312,10 @@ async def val(ctx, statisticToCheck, discordName = ""):
     else:
       await ctx.send(f"There was an error. For those who care, the error was: _\"{err}\"_")
 
+async def serverMembers(ctx):
+  members = []
+  for member in ctx.guild.members:
+    members.append(str(member.name) + "#" + str(member.discriminator))
 
+  return members
 bot.run(os.environ["profilerBotToken"])

@@ -70,5 +70,5 @@ async def leaguePoints(ctx, riotName):
     
     db[f"{name} leaguePoints"] = playerPoints
     
-    outstring = f"{player.riotName} has {playerPoints} in League of Legends"    
+    outstring = f"**{player.riotName}** current LoL points is _{playerPoints}_"    
     await ctx.send(outstring)
