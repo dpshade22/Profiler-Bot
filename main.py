@@ -10,7 +10,7 @@ from leagueClasses import LeagueProfile
 from helpers import helperFuncs, leagueHelpers, valorantHelpers
 from helpers.helperFuncs import insertSortLists, insertSortChamps, parseInput, headsOrTails, readyForMoreRequests
 from helpers.leagueHelpers import recentGames, leagueLeaderboard, getLeaguePoints
-from helpers.valorantHelpers import compKDA, compHS, dmgPerRound, getValPoints, playerValorantProfile
+from helpers.valorantHelpers import getValStats, playerValorantProfile
 
 mongoPass = os.environ['mongoPass']
 
@@ -43,7 +43,7 @@ async def help(ctx):
   
   > **Other `!val` commands**
   >  `!val leaderboard` 
-  >      _shows Valorant leaderboard for members in this server [specific stat to sort by: **points**, **kda**, **hs**, **dmg/round**]_
+  >      _shows Valorant leaderboard for members in this server [specific stat to sort by: **points**, **kda**, **hs%**, **dmg/round**]_
   >  `!val globalLeaderboard` 
   >      _shows Valorant leaderboard for all players in the database [can also specify stat]_
   >  `!val [discord#tag]` 
@@ -80,8 +80,6 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
   collection = mongoDb.profiles
   valorantStats = mongoDb.valorantStats
   leagueStats = mongoDb.leagueStats
-
-  s = requests.Session()
   
   if collection.find_one({"DiscordName": discordName}) != None:
     await ctx.send(f"{discordName} already exists. Use `!updateProfile` with your new IGNs")
@@ -97,13 +95,17 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
   })
   
   if valorantStats.find_one({"ValorantName": valName}) == None and valName != "":
-    points = getValPoints(valName, False, s)
-    currKda = compKDA(valName, False, s)
-    allKda = compKDA(valName, True, s)
-    currHS = compHS(valName, False, s)
-    allHS = compHS(valName, True, s)
-    currDmg = dmgPerRound(valName, False, s)
-    allDmg = dmgPerRound(valName, True, s)
+
+    currentValStats = getValStats(valName, False)
+    overallValStats = getValStats(valName, True)
+    
+    points = currentValStats["POINTS"]
+    currKda = currentValStats["KDA"]
+    currHS = currentValStats["HS"]
+    currDmg = currentValStats["DMG"]
+    allKda = overallValStats["KDA"]
+    allHS = overallValStats["HS"]
+    allDmg = overallValStats["DMG"]
     valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg})
   
   if leagueStats.find_one({"LoLName": LoLName}) == None and LoLName != "":
@@ -142,33 +144,41 @@ async def update(ctx):
         print("Resuming")
 
       valName = valQuery['ValorantName']
-      points = getValPoints(valName, False, s)
-      currKda = compKDA(valName, False, s)
-      allKda = compKDA(valName, True, s)
-      currHS = compHS(valName, False, s)
-      time.sleep(20)
-      allHS = compHS(valName, True, s)
-      currDmg = dmgPerRound(valName, False, s)
-      allDmg = dmgPerRound(valName, True, s)
+      
+      currentValStats = getValStats(valName, False)
+      overallValStats = getValStats(valName, True)
+    
+      points = currentValStats["POINTS"]
+      currKda = currentValStats["KDA"]
+      currHS = currentValStats["HS"]
+      currDmg = currentValStats["DMG"]
+      allKda = overallValStats["KDA"]
+      allHS = overallValStats["HS"]
+      allDmg = overallValStats["DMG"]
+
       valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg}})
       profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
 
     elif profile['ValorantName'] != None:
       valName = profile['ValorantName']
-      points = getValPoints(valName, False, s)
-      currKda = compKDA(valName, False, s)
-      allKda = compKDA(valName, True, s)
-      currHS = compHS(valName, False, s)
-      time.sleep(20)
-      allHS = compHS(valName, True, s)
-      currDmg = dmgPerRound(valName, False, s)
-      allDmg = dmgPerRound(valName, True, s)
+      
+      currentValStats = getValStats(valName, False)
+      overallValStats = getValStats(valName, True)
+    
+      points = currentValStats["POINTS"]
+      currKda = currentValStats["KDA"]
+      currHS = currentValStats["HS"]
+      currDmg = currentValStats["DMG"]
+      allKda = overallValStats["KDA"]
+      allHS = overallValStats["HS"]
+      allDmg = overallValStats["DMG"]
+      
       valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg})
       profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
 
     if leagueQuery != None:
       leagueName = leagueQuery['LoLName']
-      points = getLeaguePoints(leagueName)
+      getLeaguePoints(leagueName)
             
   outstring = "\n"
   for profileUpdated in profilesUpdated:
@@ -227,15 +237,20 @@ async def updateProfile(ctx, discordName = "", newVal = "", newLol = "", newCod 
 
   valName = valQuery['ValorantName']
   lolName = leagueQuery['LoLName']
+
   
-  valPoints = getValPoints(valName, False, s)
-  currValKda = compKDA(valName, False, s)
-  allValKda = compKDA(valName, True, s)
-  currValHS = compHS(valName, False, s)
-  time.sleep(30)
-  allValHS = compHS(valName, True, s)
-  currValDmg = dmgPerRound(valName, False, s)
-  allValDmg = dmgPerRound(valName, True, s)
+  currentValStats = getValStats(valName, False)
+  overallValStats = getValStats(valName, True)
+  
+  valPoints = currentValStats["POINTS"]
+  currValKda = currentValStats["KDA"]
+  currValHS = currentValStats["HS"]
+  currValDmg = currentValStats["DMG"]
+
+  allValKda = overallValStats["KDA"]
+  allValHS = overallValStats["HS"]
+  allValDmg = overallValStats["DMG"]
+  
   valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": valPoints, "currKda": currValKda, "allKda": allValKda, "currHS": currValHS, "allHS": allValHS,"currDmg": currValDmg, "allDmg": allValDmg}})
   
   if lolName != "":
@@ -346,7 +361,7 @@ async def val(ctx, statisticToCheck, discordName = ""):
       
       stat = "points"
       
-      if discordName.lower() == "hs":
+      if discordName.lower() == "hs%":
         stat = "currHS"
       elif discordName.lower() == "kda":
         stat = "currKda"
@@ -355,19 +370,21 @@ async def val(ctx, statisticToCheck, discordName = ""):
       else:
         discordName = stat
         
-      outstring = f"_**Valorant {discordName.upper()} Leaderboard**_\n----------------------------------------\n"
 
       leaderboard = valorantStats.find({}).sort(stat, -1)
-      
       currentServerLeaderboard = []
-
+      outstring = ""
+      
       if statisticToCheck == "leaderboard":
+        outstring = f"_**Valorant {discordName.upper()} Leaderboard**_\n----------------------------------------\n"
+        
         for player in leaderboard:
           playerProfile = profiles.find_one({"ValorantName": player["ValorantName"]})
           if playerProfile["DiscordName"] not in members:
             continue
           currentServerLeaderboard.append(player)
       else:
+        outstring = f"_**Valorant {discordName.upper()} Global Leaderboard**_\n----------------------------------------\n"
         currentServerLeaderboard = leaderboard
       
       for i, valPlayer in enumerate(currentServerLeaderboard):
@@ -384,7 +401,7 @@ async def val(ctx, statisticToCheck, discordName = ""):
       
   except (RuntimeError, TypeError, NameError, IndexError, discord.ClientException, requests.exceptions.HTTPError) as err:
     if type(err) == IndexError:
-      await ctx.send(f"Tag wasn't included in Valorant name \"_{name}_\"")
+      await ctx.send(f"Tag wasn't included in Valorant name \"_{valName}_\"")
     elif type(err) == requests.exceptions.HTTPError:
       await ctx.send(f"Can't find the player. Double check your player name and tag. If those are correct, try loging into tracker.gg with that name and try again.")
     else:
