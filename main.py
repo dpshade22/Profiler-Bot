@@ -37,10 +37,10 @@ async def help(ctx):
 
  _**Update Statistics**_   `!update` _get most up to date statistics for all players_
   
-  > _**Valorant**_   `!val [stat] [discord#tag]` standard format
-  > _stats with the \"all\" before them show all competitive seasons together, while without it is current season's competitive games_
-  > **valid stats**: _kda, allKDA, hs%, allhs%, dmg/r, allDmg/r, points
+  > _**Valorant**_   `!val [stat] [discord#tag]` standard format. Must connect to https://dak.gg/valorant/ with your Riot Acc.
   
+  > **valid stats**: _kd, hs%, dmg/r, fbr, points_
+    
   > **Other `!val` commands**
   >  `!val leaderboard` 
   >      _shows Valorant leaderboard for members in this server [specific stat to sort by: **points**, **kda**, **hs%**, **dmg/round**]_
@@ -49,11 +49,12 @@ async def help(ctx):
   >  `!val [discord#tag]` 
   >      _shows Valorant profile of the user given_
   
-_**League of Legends**_   `!league [stat] [discord#tag]`
+  _**League of Legends**_   `!league [stat] [discord#tag]`
   **valid stats**: _topChamps, points, leaderboard_
 
   _**Coin Flip**_ `!coin`
-
+-------------------------------------------------------------------------------
+  
   """
   await ctx.send(outstring)
 
@@ -99,14 +100,17 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
     currentValStats = getValStats(valName, False)
     overallValStats = getValStats(valName, True)
     
-    points = currentValStats["POINTS"]
-    currKda = currentValStats["KDA"]
-    currHS = currentValStats["HS"]
-    currDmg = currentValStats["DMG"]
-    allKda = overallValStats["KDA"]
-    allHS = overallValStats["HS"]
-    allDmg = overallValStats["DMG"]
-    valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg})
+    valPoints = currentValStats["POINTS"]
+    currValKda = currentValStats["KDA"]
+    currValHS = currentValStats["HS"]
+    currValDmg = currentValStats["DMGR"]
+    currValFBR = currentValStats["FBR"]
+    overallValFBR = overallValStats["FBR"]
+    overalKDA = overallValStats["KDA"]
+    overallHS = overallValStats["HS"]
+    overallDmgr = overallValStats["DMGR"]
+    
+    valorantStats.insert_one({"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmgm, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR})
   
   if leagueStats.find_one({"LoLName": LoLName}) == None and LoLName != "":
     points = getLeaguePoints(LoLName)
@@ -148,15 +152,17 @@ async def update(ctx):
       currentValStats = getValStats(valName, False)
       overallValStats = getValStats(valName, True)
     
-      points = currentValStats["POINTS"]
-      currKda = currentValStats["KDA"]
-      currHS = currentValStats["HS"]
-      currDmg = currentValStats["DMG"]
-      allKda = overallValStats["KDA"]
-      allHS = overallValStats["HS"]
-      allDmg = overallValStats["DMG"]
-
-      valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg}})
+      valPoints = currentValStats["POINTS"]
+      currValKda = currentValStats["KDA"]
+      currValHS = currentValStats["HS"]
+      currValDmg = currentValStats["DMGR"]
+      currValFBR = currentValStats["FBR"]
+      overallValFBR = overallValStats["FBR"]
+      overalKDA = overallValStats["KDA"]
+      overallHS = overallValStats["HS"]
+      overallDmgr = overallValStats["DMGR"]
+    
+      valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmg, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR}})
       profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
 
     elif profile['ValorantName'] != None:
@@ -165,15 +171,17 @@ async def update(ctx):
       currentValStats = getValStats(valName, False)
       overallValStats = getValStats(valName, True)
     
-      points = currentValStats["POINTS"]
-      currKda = currentValStats["KDA"]
-      currHS = currentValStats["HS"]
-      currDmg = currentValStats["DMG"]
-      allKda = overallValStats["KDA"]
-      allHS = overallValStats["HS"]
-      allDmg = overallValStats["DMG"]
+      valPoints = currentValStats["POINTS"]
+      currValKda = currentValStats["KDA"]
+      currValHS = currentValStats["HS"]
+      currValDmg = currentValStats["DMGR"]
+      currValFBR = currentValStats["FBR"]
+      overallValFBR = overallValStats["FBR"]
+      overalKDA = overallValStats["KDA"]
+      overallHS = overallValStats["HS"]
+      overallDmgr = overallValStats["DMGR"]
       
-      valorantStats.insert_one({"ValorantName": valName, "points": points, "currKda": currKda, "allKda": allKda, "currHS": currHS, "allHS": allHS,"currDmg/Round": currDmg, "allDmg/Round": allDmg})
+      valorantStats.insert_one({"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmg, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR})
       profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
 
     if leagueQuery != None:
@@ -245,13 +253,14 @@ async def updateProfile(ctx, discordName = "", newVal = "", newLol = "", newCod 
   valPoints = currentValStats["POINTS"]
   currValKda = currentValStats["KDA"]
   currValHS = currentValStats["HS"]
-  currValDmg = currentValStats["DMG"]
-
-  allValKda = overallValStats["KDA"]
-  allValHS = overallValStats["HS"]
-  allValDmg = overallValStats["DMG"]
+  currValDmg = currentValStats["DMGR"]
+  currValFBR = currentValStats["FBR"]
+  overallValFBR = overallValStats["FBR"]
+  overalKDA = overallValStats["KDA"]
+  overallHS = overallValStats["HS"]
+  overallDmgr = overallValStats["DMGR"]
   
-  valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": valPoints, "currKda": currValKda, "allKda": allValKda, "currHS": currValHS, "allHS": allValHS,"currDmg": currValDmg, "allDmg": allValDmg}})
+  valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmg, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR}})
   
   if lolName != "":
     getLeaguePoints(lolName)
@@ -331,25 +340,19 @@ async def val(ctx, statisticToCheck, discordName = ""):
   statisticToCheck = statisticToCheck.lower()
   
   try: 
-    if statisticToCheck == "currkda" or statisticToCheck.lower() == "kda":
-      await ctx.send(f"**{valName}'s** current competitive KDA is: _{valQuery['currKda']}_")
+    if statisticToCheck == "currKDA" or statisticToCheck == "kd":
+      await ctx.send(f"**{valName}'s** current competitive KDA is: _{valQuery['currKDA']}_")
       return
-    elif statisticToCheck == "allkda":
-      await ctx.send(f"**{valName}'s** overall competitive KDA is: _{valQuery['allKda']}_")
-      return
-    elif  statisticToCheck == "currhs%" or statisticToCheck.lower() == "hs%":
+    elif  statisticToCheck == "currhs%" or statisticToCheck == "hs%":
       await ctx.send(f"**{valName}'s** current HS% is: _{valQuery['currHS']}_")
       return
-    elif statisticToCheck == "allhs%":
-      await ctx.send(f"**{valName}'s** overall HS% is: _{valQuery['allHS']}_")
+    elif statisticToCheck == "currdmg/r" or statisticToCheck == "dmg/r":
+      await ctx.send(f"**{valName}'s** current DMG/Round is: _{valQuery['currDmg/Round']}_")
       return
-    elif statisticToCheck == "currdmg/r" or statisticToCheck.lower() == "dmg/r":
-      await ctx.send(f"**{valName}'s** current DMG/Round is: _{valQuery['currDmg']}_")
+    elif statisticToCheck == "currfbr" or statisticToCheck == "fbr":
+      await ctx.send(f"**{valName}'s** current first blood rate is: _{valQuery['currFBR']}_")
       return
-    elif statisticToCheck == "alldmg/r":
-      await ctx.send(f"**{valName}'s** overall DMG/Round is: _{valQuery['allDmg']}_")
-      return
-    elif statisticToCheck == "currpoints" or statisticToCheck.lower() == "points":
+    elif statisticToCheck == "currpoints" or statisticToCheck == "points":
       await ctx.send(f"**{valName}'s** current Valorant points is _{valQuery['points']}_")
       return
     elif statisticToCheck == "":
@@ -360,13 +363,16 @@ async def val(ctx, statisticToCheck, discordName = ""):
       members = await serverMembers(ctx)
       
       stat = "points"
+      discordName = discordName.lower()
       
-      if discordName.lower() == "hs%":
+      if discordName == "hs%":
         stat = "currHS"
-      elif discordName.lower() == "kda":
-        stat = "currKda"
-      elif discordName.lower() == "dmg/round":
+      elif discordName == "kd":
+        stat = "currKDA"
+      elif discordName == "dmg/round":
         stat = "currDmg/Round"
+      elif discordName == "fbr":
+        stat = "currFBR"
       else:
         discordName = stat
         

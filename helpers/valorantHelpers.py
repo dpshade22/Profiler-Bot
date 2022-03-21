@@ -1,80 +1,125 @@
 from bs4 import BeautifulSoup
-from helpers.proxies import responseThruProxy
+from helpers.valSeasons import getSeasonAndAct
 import requests
 import random
 import math
+import json
 
+def getValStats(valName, allSeasons):
+    url = f"https://dak.gg/valorant/api/v1/profile/{valName.replace('#', '-')}/matches"
 
-def getValStats(valName, AllFromQueue):
-  valName = valName.split("#")
-  name = valName[0].replace(" ", "%20")
-  tag = valName[1]
-  cookies = {
-      'cf_chl_2': '67b065257ccf1ec',
-      'cf_chl_prog': 'x11',
-      'cf_clearance': 'agbsrtVNs2FnsTNJqbFAFUupK943xAjiY3AgwDiaH1M-1647815259-0-150',
-  }
+    season, act = getSeasonAndAct()
 
-  headers = {
-      'authority': 'tracker.gg',
-      'cache-control': 'max-age=0',
-      'upgrade-insecure-requests': '1',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36',
-      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-      'sec-gpc': '1',
-      'sec-fetch-site': 'same-origin',
-      'sec-fetch-mode': 'navigate',
-      'sec-fetch-user': '?1',
-      'sec-fetch-dest': 'document',
-      'referer': 'https://tracker.gg/valorant/profile/riot/41619%23NA1/overview?__cf_chl_tk=e9QE0WXKhy0MVH0vu.Cv9xHUPkCTyjX5EJQ4AXPHolo-1647815258-0-gaNycGzNByU',
-      'accept-language': 'en-US,en;q=0.9',
-      # Requests sorts cookies= alphabetically
-      # 'cookie': 'cf_chl_2=67b065257ccf1ec; cf_chl_prog=x11; cf_clearance=agbsrtVNs2FnsTNJqbFAFUupK943xAjiY3AgwDiaH1M-1647815259-0-150',
-      'if-modified-since': 'Sun, 20 Mar 2022 21:22:30 GMT',
-  }
-  URL = f"https://tracker.gg/valorant/profile/riot/{name}%23{tag}/overview"
-
-  if AllFromQueue:
-    URL += "?season=all"
-  
-  s = requests.Session()
-
-  page = s.get(URL, headers = headers, cookies = cookies)
     
-  soup = BeautifulSoup(page.content, "html.parser")
   
-  hs = soup.find("span", text="Headshot%").find_next("span").text[:-1]
-  dmg = soup.find("span", text="Damage/Round").find_next("span").text
-  kad = soup.find("span", text="KAD Ratio").find_next("span").text
-
-  matches = int(soup.find("span", class_="matches").text.split(" ")[10])
-  kda = float(soup.find("span", text="KAD Ratio").find_next("span").text)
-  dmgr = float(soup.find("span", text="Damage/Round").find_next("span").text[:-2])
-  winRate = float(soup.find("span", text="Win %").find_next("span").text[:-2])
+    querystring = {"season": f"s{season}", "act": f"act{act}"}
   
-  return {
-    "HS": float(hs),
-    "DMG": float(dmg),
-    "KDA": float(kad),
-    "POINTS": getPoints(matches, kda, dmgr, winRate)
-  }
+    payload = ""
+    headers = {
+        "authority": "dak.gg",
+        "accept": "application/json, text/plain, */*",
+        "x-xsrf-token": "eyJpdiI6InZ0QzljN3NlelIydFdIMC82c1JVS1E9PSIsInZhbHVlIjoiOHJDaEZsVTR2eTErY2xidVE4VDg5ZzdvN1lJbjVodFFidTg4a0VsZG1heUZSTktTZ2ZjTFNVS3VPdGY5c3hyRzA2QWVlbFRiV0ZLQTFHanphZ0lqWThBMTRHT3paeVU2UllLK0VqOWdhb0FXcEs0K1d2d003aXNUMXJDS2RmaVMiLCJtYWMiOiI1NDY4OWExZGIzZGU5NzJlYzdlZjFjMTAyMDcwYWMwMWNlYjMwOWFlNmQxZmM3YmQ3MDllYmVmNTFmY2I0MmJjIn0=",
+        "x-requested-with": "XMLHttpRequest",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
+        "sec-gpc": "1",
+        "sec-fetch-site": "same-origin",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-dest": "empty",
+        "referer": f"https://dak.gg/valorant/profile/{valName.replace('#', '-')}",
+        "accept-language": "en-US,en;q=0.9"
+    }
 
-def getPoints(matches, kda, dmgr, winRate):
-  c = 0.4 * (math.log(matches) + 1)
-  points =  0.5 * (c * 4 * kda) + 0.5 * (c * winRate + c * dmgr)
-  return round(points, 2)
+    valName = valName.split("#")
+    name = valName[0].replace(" ", "%20")
+    tag = valName[1]
+
+    s = requests.Session()
+    s.get(f"https://dak.gg/valorant/profile/{name}-{tag}/renew")
+    
+    r = s.request("GET", url, data=payload, headers=headers, params=querystring)
+    r = r.json()
+
+    kTotal, dTotal, aTotal, wTotal, hsrTotal, dmgrTotal, pointsTotal, fbsTotal = 0, 0, 0, 0, 0, 0, 0, 0
+    matches = [] 
+  
+    if not allSeasons:
+      for match in r["data"]:
+          if match["game_mode"] == "competitive":
+              matches.append(match)
+    else:
+      s.get(f"https://dak.gg/valorant/profile/{name}-{tag}/renew")
+      
+      
+      iterSeason, iterAct = int(season), int(act)
+
+      while iterSeason > 0:
+     
+        querystring = {"season": f"s{iterSeason}", "act": f"act{iterAct}"}
+
+        r = s.request("GET", url, data=payload, headers=headers, params=querystring)
+        r = r.json()
+        print(json.dumps(r, indent = 2))
+        
+        for match in r["data"]:
+          if match["game_mode"] == "competitive":
+              matches.append(match)
+  
+        if iterAct == 1:
+            iterAct = 3
+            iterSeason -= 1
+
+        else:
+            iterAct -= 1
+
+            
+    for match in matches:
+        kTotal += match["kills"]
+        dTotal += match["deaths"]
+        aTotal += match["assists"]
+        hsrTotal += match["headshots_rate"]
+        dmgrTotal += match["damage"]
+        pointsTotal += match["score"]
+        fbsTotal += match["first_bloods"] / (match["points"]["Red"] + match["points"]["Blue"])
+      
+        if match["result_code"] == "victory":
+            wTotal += 1
+
+        # print(json.dumps(match, indent=2))
+    
+    games = len(matches)
+    kda = round(float((kTotal + aTotal) / dTotal), 2)
+    hsr = round(float(hsrTotal / games), 2)
+    dmgr = round(float(dmgrTotal / games), 2)
+    wr = round(float(wTotal / games), 2)
+    points = round(float(pointsTotal / games), 2)
+    fbr = round(float(fbsTotal / games), 2)
+  
+    return {
+    "HS": hsr,
+    "DMGR": dmgr,
+    "KDA": kda,
+    "WR": wr,
+    "FBR": fbr,
+    "POINTS": points,
+    "MATCHES": matches,
+    }
 
 def playerValorantProfile(valName, valQuery):
   return f"""
-      _{valName}'s Valorant Stats:_
+      _{valName}'s Current Season's Valorant Stats:_
     -----------------------------------------------
       _Points_: ***{valQuery['points']}***
-      _Current KDA_: ***{valQuery['currKda']}***
+      
+      **CURRENT**
+      _Current KDA_: ***{valQuery['currKDA']}***
       _Current HS%_: ***{valQuery['currHS']}***
       _Current Damage/Round_: ***{valQuery['currDmg/Round']}***
+      _Current First Blood Rate_: ***{valQuery['currFBR']}***
       
-      _Overall KDA_: ***{valQuery['allKda']}***
+      **OVERALL**
+      _Overall KDA_: ***{valQuery['allKDA']}***
       _Overall HS%_: ***{valQuery['allHS']}***
       _Overall Damage/Round_: ***{valQuery['allDmg/Round']}***
+      _Overall First Blood Rate_: ***{valQuery['allFBR']}***
       """
 
