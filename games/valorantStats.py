@@ -58,7 +58,7 @@ def getValStats(valName, allSeasons):
 
         r = s.request("GET", url, data=payload, headers=headers, params=querystring)
         r = r.json()
-        print(json.dumps(r, indent = 2))
+        # print(json.dumps(r, indent = 2))
         
         for match in r["data"]:
           if match["game_mode"] == "competitive":

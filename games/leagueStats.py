@@ -1,5 +1,5 @@
-from leagueClasses import LeagueProfile
-from helpers.helperFuncs import insertSortChamps, insertSortLists, serverMembers
+from games.leagueClasses import LeagueProfile
+from helpers.helpfulFunctions import insertSortChamps, insertSortLists, serverMembers
 import datetime
 import pymongo
 import os

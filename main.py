@@ -6,16 +6,17 @@ import discord
 import time
 import os
 
-from leagueClasses import LeagueProfile
-from helpers import helperFuncs, leagueHelpers, valorantHelpers
-from helpers.helperFuncs import insertSortLists, insertSortChamps, parseInput, headsOrTails, readyForMoreRequests
-from helpers.leagueHelpers import recentGames, leagueLeaderboard, getLeaguePoints
-from helpers.valorantHelpers import getValStats, playerValorantProfile
+from helpers.db import insertObjIntoMongo, updateMongoQueryWObj
+from games import leagueStats, valorantStats
+from helpers.helpfulFunctions import insertSortLists, insertSortChamps, parseInput, headsOrTails, readyForMoreRequests
+from games.leagueStats import recentGames, leagueLeaderboard, getLeaguePoints
+from games.valorantStats import getValStats, playerValorantProfile
 
 mongoPass = os.environ['mongoPass']
 
 client = pymongo.MongoClient(f"mongodb+srv://dpshade22:{mongoPass}@cluster0.z1jes.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
 mongoDb = client.profileDB
+
 intents = discord.Intents(messages=True, guilds=True, members=True)
 
 bot = commands.Bot(command_prefix='!', help_command=None, intents=intents)
@@ -31,7 +32,7 @@ async def help(ctx):
   _**LIST OF COMMANDS**_
   
   _**Create Player Profile**_   `!newProfile [discord#tag] [valorantName#tag] [leagueName] [cod]`
-  _**Update Player Profile**_   `!updateProfile [discord#tag] [valorantName#tag] [leagueName] [cod]` 
+  _**Update Player Profile**_   `!update [discord#tag] [valorantName#tag] [leagueName] [cod]` 
   > *If you need to change only one of these, still fill in each field (use old names)*
   > *Update also recalculates all of your stats*
 
@@ -87,30 +88,27 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
     return
   
   print(collection.profiles)
-  collection.insert_one({
+
+  insertObjIntoMongo(collection, {
     "LastUpdate": datetime.datetime.now(),
     "DiscordName": discordName,
     "ValorantName": valName,
     "LoLName": LoLName,
     "CoDName": CoDName
   })
+
+  
   
   if valorantStats.find_one({"ValorantName": valName}) == None and valName != "":
 
     currentValStats = getValStats(valName, False)
     overallValStats = getValStats(valName, True)
-    
-    valPoints = currentValStats["POINTS"]
-    currValKda = currentValStats["KDA"]
-    currValHS = currentValStats["HS"]
-    currValDmg = currentValStats["DMGR"]
-    currValFBR = currentValStats["FBR"]
-    overallValFBR = overallValStats["FBR"]
-    overalKDA = overallValStats["KDA"]
-    overallHS = overallValStats["HS"]
-    overallDmgr = overallValStats["DMGR"]
-    
-    valorantStats.insert_one({"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmgm, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR})
+        
+    insertObjIntoMongo(valorantStats, 
+                      {"ValorantName": valName, "points": currentValStats["POINTS"], "currKDA": currentValStats["KDA"], 
+                       "currHS": currentValStats["HS"], "currDmg/Round": currentValStats["DMGR"], "allKDA": overallValStats["KDA"], 
+                       "allHS": overallValStats["HS"], "allDmg/Round": overallValStats["DMGR"], "currFBR": currentValStats["FBR"], 
+                       "allFBR": overallValStats["FBR"]})
   
   if leagueStats.find_one({"LoLName": LoLName}) == None and LoLName != "":
     points = getLeaguePoints(LoLName)
@@ -118,156 +116,140 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
   await ctx.send(f"_Successfully added **{discordName}** to the database_")
 
 @bot.command()
-async def update(ctx):
-  members = await serverMembers(ctx)
-  profilesUpdated = []
+async def update(ctx, discordName = "", newVal = "", newLol = "", newCod = ""):
+  if discordName == "":
+    members = await serverMembers(ctx)
+    profilesUpdated = []
+    
+    profiles = mongoDb.profiles
+    valorantStats = mongoDb.valorantStats
+    leagueStats = mongoDb.leagueStats
+    
+    allProfiles = profiles.find({})
+    s = requests.Session()
+    
+    await ctx.send(f"Updating **all** server member profiles... this can take a... while...")
+    
+    for i, profile in enumerate(allProfiles):
+      if profile['DiscordName'] not in members or not readyForMoreRequests(profile['LastUpdate']):
+        continue
+      elif profile['ValorantName'] != None or profile['LoLName'] != None:
+        profilesUpdated.append(profile['DiscordName'])
+        
+      valQuery = valorantStats.find_one({"ValorantName": profile['ValorantName']})
+      leagueQuery = leagueStats.find_one({"LoLName": profile['LoLName']})
+      rate = (i + 1)
   
-  profiles = mongoDb.profiles
-  valorantStats = mongoDb.valorantStats
-  leagueStats = mongoDb.leagueStats
+      if valQuery != None:
+        if rate % 2 == 0:
+          print("Sleeping")
+          time.sleep(i)
+          print("Resuming")
   
-  allProfiles = profiles.find({})
-  s = requests.Session()
-  
-  await ctx.send(f"Updating **all** server member profiles... this can take a... while...")
-  
-  for i, profile in enumerate(allProfiles):
-    if profile['DiscordName'] not in members or not readyForMoreRequests(profile['LastUpdate']):
-      continue
-    elif profile['ValorantName'] != None or profile['LoLName'] != None:
-      profilesUpdated.append(profile['DiscordName'])
+        valName = valQuery['ValorantName']
+        
+        currentValStats = getValStats(valName, False)
+        overallValStats = getValStats(valName, True)
       
-    valQuery = valorantStats.find_one({"ValorantName": profile['ValorantName']})
-    leagueQuery = leagueStats.find_one({"LoLName": profile['LoLName']})
-    rate = (i + 1)
-
-    if valQuery != None:
-      if rate % 2 == 0:
-        print("Sleeping")
-        time.sleep(61)
-        print("Resuming")
-
-      valName = valQuery['ValorantName']
+        updateMongoQueryWObj(valorantStats, valQuery, 
+                            {"ValorantName": valName, "points": currentValStats["POINTS"], "currKDA": currentValStats["KDA"], 
+                             "currHS": currentValStats["HS"], "currDmg/Round": currentValStats["DMGR"], "allKDA": overallValStats["KDA"], 
+                             "allHS": overallValStats["HS"], "allDmg/Round": overallValStats["DMGR"], "currFBR": currentValStats["FBR"], 
+                             "allFBR": overallValStats["FBR"]})
+        
+        updateMongoQueryWObj(profiles, profile, {"LastUpdate": datetime.datetime.now()})
       
-      currentValStats = getValStats(valName, False)
-      overallValStats = getValStats(valName, True)
-    
-      valPoints = currentValStats["POINTS"]
-      currValKda = currentValStats["KDA"]
-      currValHS = currentValStats["HS"]
-      currValDmg = currentValStats["DMGR"]
-      currValFBR = currentValStats["FBR"]
-      overallValFBR = overallValStats["FBR"]
-      overalKDA = overallValStats["KDA"]
-      overallHS = overallValStats["HS"]
-      overallDmgr = overallValStats["DMGR"]
-    
-      valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmg, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR}})
-      profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
-
-    elif profile['ValorantName'] != None:
-      valName = profile['ValorantName']
-      
-      currentValStats = getValStats(valName, False)
-      overallValStats = getValStats(valName, True)
-    
-      valPoints = currentValStats["POINTS"]
-      currValKda = currentValStats["KDA"]
-      currValHS = currentValStats["HS"]
-      currValDmg = currentValStats["DMGR"]
-      currValFBR = currentValStats["FBR"]
-      overallValFBR = overallValStats["FBR"]
-      overalKDA = overallValStats["KDA"]
-      overallHS = overallValStats["HS"]
-      overallDmgr = overallValStats["DMGR"]
-      
-      valorantStats.insert_one({"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmg, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR})
-      profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
-
-    if leagueQuery != None:
-      leagueName = leagueQuery['LoLName']
-      getLeaguePoints(leagueName)
-            
-  outstring = "\n"
-  for profileUpdated in profilesUpdated:
-    outstring += f"_{profileUpdated}_\n"
-
-  if outstring == "\n":
-    await ctx.send("_No profiles updated_")
-    return
-    
-  await ctx.send(f"_Successfully updated the following player's statistics in the database:_ {outstring}")
+      elif profile['ValorantName'] != None:
+        valName = profile['ValorantName']
+        
+        currentValStats = getValStats(valName, False)
+        overallValStats = getValStats(valName, True)
+        
+        insertObjIntoMongo(valorantStats,
+                          {"ValorantName": valName, "points": currentValStats["POINTS"], "currKDA": currentValStats["KDA"], 
+                           "currHS": currentValStats["HS"], "currDmg/Round": currentValStats["DMGR"], "allKDA": overallValStats["KDA"], 
+                           "allHS": overallValStats["HS"], "allDmg/Round": overallValStats["DMGR"], "currFBR": currentValStats["FBR"], 
+                           "allFBR": overallValStats["FBR"]}
+                          )
+        
+        updateMongoQueryWObj(profiles, profile, {"LastUpdate": datetime.datetime.now()})
   
-
-
-@bot.command()
-async def updateProfile(ctx, discordName = "", newVal = "", newLol = "", newCod = ""):
-  await ctx.send(f"Updating _**all**_ of **{discordName}'s** statistics in the database...")
-
-  profiles = mongoDb.profiles
-  valorantStats = mongoDb.valorantStats
-  leagueStats = mongoDb.leagueStats
+      
+      if leagueQuery != None:
+        leagueName = leagueQuery['LoLName']
+        getLeaguePoints(leagueName)
+              
+    outstring = "\n"
+    for profileUpdated in profilesUpdated:
+      outstring += f"_{profileUpdated}_\n"
   
-  profile = profiles.find_one({"DiscordName": discordName})
-  valName = profile['ValorantName']
-  lolName = profile['LoLName']
+    if outstring == "\n":
+      await ctx.send("_No profiles updated_")
+      return
+      
+    await ctx.send(f"_Successfully updated the following player's statistics in the database:_ {outstring}")
 
-  if not readyForMoreRequests(profile['LastUpdate']):
-    await ctx.send(f"_{discordName}'s profile was updated within the past 20 minutes. Please allow time before your next update_")
-    return
+  else:
+    await ctx.send(f"Updating _**all**_ of **{discordName}'s** statistics in the database...")
+  
+    profiles = mongoDb.profiles
+    valorantStats = mongoDb.valorantStats
+    leagueStats = mongoDb.leagueStats
     
-  valQuery = valorantStats.find_one({"ValorantName": valName})
-  leagueQuery = leagueStats.find_one({"LoLName": lolName})
-  s = requests.Session()
-
-  if valQuery == None:
-    valorantStats.insert_one({"ValorantName": valName})
+    profile = profiles.find_one({"DiscordName": discordName})
+    valName = profile['ValorantName']
+    lolName = profile['LoLName']
+  
+    if not readyForMoreRequests(profile['LastUpdate']):
+      await ctx.send(f"_{discordName}'s profile was updated within the past 20 minutes. Please allow time before your next update_")
+      return
+      
     valQuery = valorantStats.find_one({"ValorantName": valName})
-
-  if leagueQuery == None:
-    leagueStats.insert_one({"LoLName": lolName})
     leagueQuery = leagueStats.find_one({"LoLName": lolName})
-
-  if newVal != "" and newLol != "" and newCod != "":
-    profiles.update_one(profile, {"$set": {"ValorantName": newVal, "LoLName": newLol, "CoDName": newCod}})
-  elif newVal != "" and newLol != "":
-    profiles.update_one(profile, {"$set": {"ValorantName": newVal, "LoLName": newLol}})
-  elif newVal != "" and newCod != "":
-    profiles.update_one(profile, {"$set": {"ValorantName": newVal, "CoDName": newCod}})
-  elif newCod != "" and newLol != "":
-    profiles.update_one(profile, {"$set": {"LoLName": newLol, "CoDName": newCod}})
-  elif newVal != "":
-    profiles.update_one(profile, {"$set": {"ValorantName": newVal}})
-  elif newLol != "":
-    profiles.update_one(profile, {"$set": {"LoLName": newLol}})
-  elif newCod != "":
-    profiles.update_one(profile, {"$set": {"CoDName": newCod}})
-
-  valName = valQuery['ValorantName']
-  lolName = leagueQuery['LoLName']
-
+    s = requests.Session()
   
-  currentValStats = getValStats(valName, False)
-  overallValStats = getValStats(valName, True)
+    if valQuery == None:
+      insertObjIntoMongo(valorantStats, {"ValorantName": valName})
+      valQuery = valorantStats.find_one({"ValorantName": valName})
   
-  valPoints = currentValStats["POINTS"]
-  currValKda = currentValStats["KDA"]
-  currValHS = currentValStats["HS"]
-  currValDmg = currentValStats["DMGR"]
-  currValFBR = currentValStats["FBR"]
-  overallValFBR = overallValStats["FBR"]
-  overalKDA = overallValStats["KDA"]
-  overallHS = overallValStats["HS"]
-  overallDmgr = overallValStats["DMGR"]
+    if leagueQuery == None:
+      insertObjIntoMongo(leagueStats, {"LoLName": lolName})
+      leagueQuery = leagueStats.find_one({"LoLName": lolName})
   
-  valorantStats.update_one(valQuery, {"$set": {"ValorantName": valName, "points": valPoints, "currKDA": currValKda, "currHS": currValHS, "currDmg/Round": currValDmg, "allKDA": overalKDA, "allHS": overallHS, "allDmg/Round": overallDmgr, "currFBR": currValFBR, "allFBR": overallValFBR}})
+    if newVal != "" and newLol != "" and newCod != "":
+      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "LoLName": newLol, "CoDName": newCod})
+    elif newVal != "" and newLol != "":
+      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "LoLName": newLol})
+    elif newVal != "" and newCod != "":
+      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "CoDName": newCod})
+    elif newCod != "" and newLol != "":
+      updateMongoQueryWObj(profiles, profile, {"LoLName": newLol, "CoDName": newCod})
+    elif newVal != "":
+      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal})
+    elif newLol != "":
+      updateMongoQueryWObj(profiles, profile, {"LoLName": newLol})
+    elif newCod != "":
+      updateMongoQueryWObj(profiles, profile, {"CoDName": newCod})
   
-  if lolName != "":
-    getLeaguePoints(lolName)
-
-  profiles.update_one(profile, {"$set": {"LastUpdate": datetime.datetime.now()}})
+    valName = valQuery['ValorantName']
+    lolName = leagueQuery['LoLName']
   
-  await ctx.send(f"_Successfully updated _**all**_ of **{discordName}'s** statistics in the database_")
+    
+    currentValStats = getValStats(valName, False)
+    overallValStats = getValStats(valName, True)
+    
+    updateMongoQueryWObj(valorantStats, valQuery, 
+                        {"ValorantName": valName, "points": currentValStats["POINTS"], "currKDA": currentValStats["KDA"], 
+                         "currHS": currentValStats["HS"], "currDmg/Round": currentValStats["DMGR"], "allKDA": overallValStats["KDA"], 
+                         "allHS": overallValStats["HS"], "allDmg/Round": overallValStats["DMGR"], "currFBR": currentValStats["FBR"], 
+                         "allFBR": overallValStats["FBR"]})
+    
+    if lolName != "":
+      getLeaguePoints(lolName)
+  
+    updateMongoQueryWObj(profiles, profile, {"LastUpdate": datetime.datetime.now()})
+    
+    await ctx.send(f"_Successfully updated _**all**_ of **{discordName}'s** statistics in the database_")
 
 
 @bot.command()
