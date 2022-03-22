@@ -1,3 +1,4 @@
+import os
 from bs4 import BeautifulSoup
 from helpers.valSeasons import getSeasonAndAct
 import requests
@@ -5,37 +6,28 @@ import random
 import math
 import json
 
-def getValStats(valName, allSeasons):
-    url = f"https://dak.gg/valorant/api/v1/profile/{valName.replace('#', '-')}/matches"
-
-    season, act = getSeasonAndAct()
-
+def getValStats(wildName, allSeasons):
+    url = "https://na.wildstats.gg/en/profile/gameid"
     
-  
-    querystring = {"season": f"s{season}", "act": f"act{act}"}
-  
+    querystring = {"_token": os.environ["_wildriftToken"],"gameid": f"{wildName}"}
+    
     payload = ""
     headers = {
-        "authority": "dak.gg",
-        "accept": "application/json, text/plain, */*",
-        "x-xsrf-token": "eyJpdiI6InZ0QzljN3NlelIydFdIMC82c1JVS1E9PSIsInZhbHVlIjoiOHJDaEZsVTR2eTErY2xidVE4VDg5ZzdvN1lJbjVodFFidTg4a0VsZG1heUZSTktTZ2ZjTFNVS3VPdGY5c3hyRzA2QWVlbFRiV0ZLQTFHanphZ0lqWThBMTRHT3paeVU2UllLK0VqOWdhb0FXcEs0K1d2d003aXNUMXJDS2RmaVMiLCJtYWMiOiI1NDY4OWExZGIzZGU5NzJlYzdlZjFjMTAyMDcwYWMwMWNlYjMwOWFlNmQxZmM3YmQ3MDllYmVmNTFmY2I0MmJjIn0=",
-        "x-requested-with": "XMLHttpRequest",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36",
+        "cookie": "locale=en; region=na; 8NGpu9jqKvaxfwaxYgsbRZPPZxSoPEpBn2EbMpGs=eyJpdiI6InZGOGQ3MDJzVEFiNWp1WlBsc0x3N3c9PSIsInZhbHVlIjoiNUtQOFZ0a1RBZnJVZURGODNybFBDUXF6MndTUlo0eDFBSXpRakdZalVZbU1lNzBqaVpJeDJNRDIyOE8xemRhMXNXNEtXdzh1dCtVcjRNZ1A2ZjRGQk9zcFdCMm95TTgzTFFWZnN2VUJvYnVUT1Bzd2hmb2ZKaEJyR0tPTC9idWlsY3hNTmJOUTc5RWpmaW1wSXM4RmhqaVNtNEh3ZW8raTFjbktVUE9Bd2hWVnFzRVpwaDh2UVQybUNDaktXVzBaR1FRZms4ZllObzloVitCRTFGbTJLRHoreENUSW9YZ2tUTndCN3lCWVlVeTM1TEVHS2dhcVl4STBsSVFMUERMUmZpanhFVm5SSkdqNDlINXFkUHkxcWY4dFJBQUE0UWc3d2x3Z1lGVEFiVG9BNHVVZVBqNFZjU1licjR4d3lrR2krenJ2V3hOSldObXBIVUpuYXpGc0c5RDhKRGZLK1g1UC92UlF0Ujdac0Fmc3libjMxUmorck94SWI2Wnkxd09xTytORHdDSFNLNjJlb056bTFnSXIyL0o2eWpOdjA1dXQ5LzZXRjRRSmwzOD0iLCJtYWMiOiJjMmFhNTIzZWVjYTNmY2RiYWRmYjVlZGQ4NjllNTQ1OTk1ZDU3MWJiNjJiOWNhMWY2YWI3MTIwMTlmOTNmNWZmIn0%253D",
+        "upgrade-insecure-requests": "1",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.83 Safari/537.36",
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
         "sec-gpc": "1",
         "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        "referer": f"https://dak.gg/valorant/profile/{valName.replace('#', '-')}",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-user": "?1",
+        "sec-fetch-dest": "document",
+        "referer": "https://na.wildstats.gg/en?",
         "accept-language": "en-US,en;q=0.9"
     }
-
     s = requests.Session()
-    s.get(f"https://dak.gg/valorant/api/v1/profile/{valName.replace('#', '-')}/renew")
-    
-    r = s.request("GET", url, data=payload, headers=headers, params=querystring)
-    r = r.json()
+    r = s.request("POST", url, data=payload, headers=headers, params=querystring)
 
-    kTotal, dTotal, aTotal, wTotal, hsrTotal, dmgrTotal, pointsTotal, fbsTotal = 0, 0, 0, 0, 0, 0, 0, 0
     matches = [] 
   
     if not allSeasons and r.get("data") != None:
@@ -108,7 +100,7 @@ def getValStats(valName, allSeasons):
 
 def playerValorantProfile(valName, valQuery):
   return f"""
-      _{valName}'s Valorant Stats:_
+      _{valName}'s Current Season's Valorant Stats:_
     -----------------------------------------------
       _Points_: ***{valQuery['points']}***
       

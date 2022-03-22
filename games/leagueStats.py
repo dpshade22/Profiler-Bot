@@ -3,7 +3,7 @@ from helpers.helpfulFunctions import insertSortChamps, insertSortLists, serverMe
 import datetime
 import pymongo
 import os
-mongoPass = os.environ['mongoPass']
+mongoPass = os.environ['_mongoPass']
 
 client = pymongo.MongoClient(f"mongodb+srv://dpshade22:{mongoPass}@cluster0.z1jes.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
 mongoDb = client.profileDB

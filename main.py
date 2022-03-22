@@ -6,13 +6,13 @@ import discord
 import time
 import os
 
-from helpers.db import insertObjIntoMongo, updateMongoQueryWObj
+from helpers.db import insertObjIntoMongo, updateMongoQueryWObj, deleteQueryInCollection
 from games import leagueStats, valorantStats
 from helpers.helpfulFunctions import insertSortLists, insertSortChamps, parseInput, headsOrTails, readyForMoreRequests
 from games.leagueStats import recentGames, leagueLeaderboard, getLeaguePoints
 from games.valorantStats import getValStats, playerValorantProfile
 
-mongoPass = os.environ['mongoPass']
+mongoPass = os.environ['_mongoPass']
 
 client = pymongo.MongoClient(f"mongodb+srv://dpshade22:{mongoPass}@cluster0.z1jes.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
 mongoDb = client.profileDB
@@ -31,27 +31,28 @@ async def help(ctx):
   outstring = f""" 
   _**LIST OF COMMANDS**_
   
-  _**Create Player Profile**_   `!newProfile [discord#tag] [valorantName#tag] [leagueName] [cod]`
-  _**Update Player Profile**_   `!update [discord#tag] [valorantName#tag] [leagueName] [cod]` 
+  _**Create Player Profile**_   `!newProfile [discord#tag] [valorantName#tag] [leagueName]`
+  _**Update Player Profile**_   `!update [discord#tag] [valorantName#tag] [leagueName]` 
   > *If you need to change only one of these, still fill in each field (use old names)*
   > *Update also recalculates all of your stats*
 
- _**Update Statistics**_   `!update` _get most up to date statistics for all players_
+ _**Update Statistics**_   `!update` _get the most up to date statistics for all players in your server_
   
-  > _**Valorant**_   `!val [stat] [discord#tag]` standard format. Must connect to https://dak.gg/valorant/ with your Riot Acc.
+  _**Valorant**_   `!val [stat] [discord#tag]` standard format. Must connect to https://dak.gg/valorant/ with your Riot Acc.
   
-  > **valid stats**: _kd, hs%, dmg/r, fbr, points_
-    
+  **valid stats**: _kda, hs%, dmg/r, fbr, points_ 
+  fbr = first blood rate
+  
   > **Other `!val` commands**
-  >  `!val leaderboard` 
+  >  `!val leaderboard [stat]` 
   >      _shows Valorant leaderboard for members in this server [specific stat to sort by: **points**, **kda**, **hs%**, **dmg/round**]_
-  >  `!val globalLeaderboard` 
+  >  `!val globalLeaderboard [stat]` 
   >      _shows Valorant leaderboard for all players in the database [can also specify stat]_
   >  `!val [discord#tag]` 
   >      _shows Valorant profile of the user given_
   
   _**League of Legends**_   `!league [stat] [discord#tag]`
-  **valid stats**: _topChamps, points, leaderboard_
+  **valid stats**: points_
 
   _**Coin Flip**_ `!coin`
 -------------------------------------------------------------------------------
@@ -78,7 +79,7 @@ async def profile(ctx, discordName):
   await ctx.send(outstring)
   
 @bot.command()
-async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = ""):
+async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDNameName = ""):
   collection = mongoDb.profiles
   valorantStats = mongoDb.valorantStats
   leagueStats = mongoDb.leagueStats
@@ -94,7 +95,6 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
     "DiscordName": discordName,
     "ValorantName": valName,
     "LoLName": LoLName,
-    "CoDName": CoDName
   })
 
   
@@ -116,7 +116,7 @@ async def newProfile(ctx, discordName, valName = "", LoLName = "", CoDName = "")
   await ctx.send(f"_Successfully added **{discordName}** to the database_")
 
 @bot.command()
-async def update(ctx, discordName = "", newVal = "", newLol = "", newCod = ""):
+async def update(ctx, discordName = "", newVal = "", newLol = "", newCoDName = ""):
   if discordName == "":
     members = await serverMembers(ctx)
     profilesUpdated = []
@@ -141,9 +141,9 @@ async def update(ctx, discordName = "", newVal = "", newLol = "", newCod = ""):
       rate = (i + 1)
   
       if valQuery != None:
-        if rate % 2 == 0:
+        if rate % 3 == 0:
           print("Sleeping")
-          time.sleep(i)
+          time.sleep(rate)
           print("Resuming")
   
         valName = valQuery['ValorantName']
@@ -216,20 +216,20 @@ async def update(ctx, discordName = "", newVal = "", newLol = "", newCod = ""):
       insertObjIntoMongo(leagueStats, {"LoLName": lolName})
       leagueQuery = leagueStats.find_one({"LoLName": lolName})
   
-    if newVal != "" and newLol != "" and newCod != "":
-      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "LoLName": newLol, "CoDName": newCod})
+    if newVal != "" and newLol != "" and newCoDName != "":
+      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "LoLName": newLol, "CoDNameName": newCoDName})
     elif newVal != "" and newLol != "":
       updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "LoLName": newLol})
-    elif newVal != "" and newCod != "":
-      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "CoDName": newCod})
-    elif newCod != "" and newLol != "":
-      updateMongoQueryWObj(profiles, profile, {"LoLName": newLol, "CoDName": newCod})
+    elif newVal != "" and newCoDName != "":
+      updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal, "CoDNameName": newCoDName})
+    elif newCoDName != "" and newLol != "":
+      updateMongoQueryWObj(profiles, profile, {"LoLName": newLol, "CoDNameName": newCoDName})
     elif newVal != "":
       updateMongoQueryWObj(profiles, profile, {"ValorantName": newVal})
     elif newLol != "":
       updateMongoQueryWObj(profiles, profile, {"LoLName": newLol})
-    elif newCod != "":
-      updateMongoQueryWObj(profiles, profile, {"CoDName": newCod})
+    elif newCoDName != "":
+      updateMongoQueryWObj(profiles, profile, {"CoDNameName": newCoDName})
   
     valName = valQuery['ValorantName']
     lolName = leagueQuery['LoLName']
@@ -349,7 +349,7 @@ async def val(ctx, statisticToCheck, discordName = ""):
       
       if discordName == "hs%":
         stat = "currHS"
-      elif discordName == "kd":
+      elif discordName == "kda":
         stat = "currKDA"
       elif discordName == "dmg/round":
         stat = "currDmg/Round"
@@ -395,10 +395,30 @@ async def val(ctx, statisticToCheck, discordName = ""):
     else:
       await ctx.send(f"There was an error. For those who care, the error was: _\"{err}\"_")
 
+
+@bot.command()
+async def delete(ctx, discordName = "", valName = "", lolName = ""):
+  profiles = mongoDb.profiles
+  valorantStats = mongoDb.valorantStats
+  leagueStats = mongoDb.leagueStats
+  
+  profile = profiles.find_one({"DiscordName": discordName})
+  val = valorantStats.find_one({"ValorantName": valName})
+  league = leagueStats.find_one({"LoL": lolName})
+  
+  if profile != None:
+    deleteQueryInCollection(profiles, profile)
+  if val != None:
+    deleteQueryInCollection(valorantStats, val)
+  if league != None:
+    deleteQueryInCollection(leagueStats, league)
+
+  await ctx.send(f"_Successfully removed {discordName} from the database_")
+
 async def serverMembers(ctx):
   members = []
   for member in ctx.guild.members:
     members.append(str(member.name) + "#" + str(member.discriminator))
 
   return members
-bot.run(os.environ["profilerBotToken"])
+bot.run(os.environ["_profilerBotToken"])

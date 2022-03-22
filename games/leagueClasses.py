@@ -3,7 +3,7 @@ import math
 import requests
 
 header = {
-  "X-Riot-Token": os.environ['riotAPIheader']
+  "X-Riot-Token": os.environ['_riotAPIheader']
 }
 
 class Champion:
@@ -101,7 +101,12 @@ class LeagueProfile:
         return request.json()
 
     def getPlayerXGamesKDA(self, count = 75):
-        puuid = self.getSummoner()['puuid']
+
+        if self.getSummoner().get('puuid') != None:
+          puuid = self.getSummoner()['puuid']
+        else:
+          return
+          
         matchIDs = self.getSummonersRecentMatchesID(count)
       
         kills, deaths, assists = 0, 0, 0
