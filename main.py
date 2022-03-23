@@ -11,6 +11,7 @@ from games import leagueStats, valorantStats
 from helpers.helpfulFunctions import insertSortLists, insertSortChamps, parseInput, headsOrTails, readyForMoreRequests
 from games.leagueStats import recentGames, leagueLeaderboard, getLeaguePoints
 from games.valorantStats import getValStats, playerValorantProfile
+from games.wildStats import getWildStats
 
 mongoPass = os.environ['_mongoPass']
 
@@ -58,6 +59,7 @@ async def help(ctx):
 -------------------------------------------------------------------------------
   
   """
+
   await ctx.send(outstring)
 
 @bot.command()
@@ -395,6 +397,10 @@ async def val(ctx, statisticToCheck, discordName = ""):
     else:
       await ctx.send(f"There was an error. For those who care, the error was: _\"{err}\"_")
 
+@bot.command()
+async def wild(ctx, statisticToCheck, discordName = ""):
+  profiles = mongoDb.profiles
+  wildStats = mongoDb.wildStats
 
 @bot.command()
 async def delete(ctx, discordName = "", valName = "", lolName = ""):

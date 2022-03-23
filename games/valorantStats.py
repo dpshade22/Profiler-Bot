@@ -10,8 +10,6 @@ def getValStats(valName, allSeasons):
 
     season, act = getSeasonAndAct()
 
-    
-  
     querystring = {"season": f"s{season}", "act": f"act{act}"}
   
     payload = ""
